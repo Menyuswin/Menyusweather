@@ -1,0 +1,847 @@
+<title>Időjárás-ügyelet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:      #E7ECEF;
+    --surface:    #F8FAFB;
+    --surface-2:  #EDF1F3;
+    --ink:        #12202A;
+    --ink-2:      #3D5261;
+    --muted:      #64798A;
+    --line:       #C6D1D8;
+    --line-soft:  #DBE3E8;
+    --accent:     #0F6F80;
+    --accent-2:   #0B505D;
+    --accent-tint:#D7E7EA;
+    --calm:       #2C6A52;
+    --warn:       #A8600A;
+    --warn-tint:  #F4E3C8;
+    --crit:       #9E2B21;
+    --crit-tint:  #F3D8D4;
+    --cold:       #2E6EA8;
+    --hot:        #B2551A;
+    --focus:      #0F6F80;
+    --shadow:     0 1px 2px rgba(18,32,42,.07), 0 8px 24px -18px rgba(18,32,42,.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0C151C;
+      --surface:    #13202A;
+      --surface-2:  #182833;
+      --ink:        #E3EBF0;
+      --ink-2:      #B3C4CF;
+      --muted:      #8598A5;
+      --line:       #273B49;
+      --line-soft:  #1E2F3B;
+      --accent:     #4FBECF;
+      --accent-2:   #7FD6E2;
+      --accent-tint:#173741;
+      --calm:       #63C094;
+      --warn:       #E0A050;
+      --warn-tint:  #3A2C13;
+      --crit:       #EC7C6E;
+      --crit-tint:  #3D1D18;
+      --cold:       #6FAEE4;
+      --hot:        #E28A4E;
+      --focus:      #4FBECF;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #0C151C;
+    --surface:    #13202A;
+    --surface-2:  #182833;
+    --ink:        #E3EBF0;
+    --ink-2:      #B3C4CF;
+    --muted:      #8598A5;
+    --line:       #273B49;
+    --line-soft:  #1E2F3B;
+    --accent:     #4FBECF;
+    --accent-2:   #7FD6E2;
+    --accent-tint:#173741;
+    --calm:       #63C094;
+    --warn:       #E0A050;
+    --warn-tint:  #3A2C13;
+    --crit:       #EC7C6E;
+    --crit-tint:  #3D1D18;
+    --cold:       #6FAEE4;
+    --hot:        #E28A4E;
+    --focus:      #4FBECF;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 56px; }
+
+  h1, h2, h3, .cond { font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px 24px; padding-bottom: 16px; border-bottom: 2px solid var(--ink);
+  }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  .tagline { color: var(--muted); font-size: 13.5px; margin: 4px 0 0; max-width: 54ch; }
+  .stamp { text-align: right; font-size: 12px; color: var(--muted); }
+  .stamp .num { color: var(--ink-2); }
+  .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .live[data-state="ok"] .dot { background: var(--calm); }
+  .live[data-state="load"] .dot { background: var(--warn); }
+  .live[data-state="err"] .dot { background: var(--crit); }
+
+  /* ---------- search ---------- */
+  .console { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0 6px; }
+  form.find { display: flex; gap: 8px; flex: 1 1 320px; }
+  input[type="search"] {
+    flex: 1; min-width: 0; padding: 9px 12px; font: inherit; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
+  }
+  input[type="search"]::placeholder { color: var(--muted); }
+  button {
+    font: inherit; font-weight: 500; cursor: pointer; border-radius: 3px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    padding: 9px 14px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+  button:hover { border-color: var(--accent); }
+  :where(a, button, input, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .watchlist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .watchlist .label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px;
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 999px; font-size: 13px;
+  }
+  .chip button { border: 0; background: none; padding: 0 4px; color: var(--muted); line-height: 1; font-size: 15px; }
+  .chip button:hover { color: var(--crit); }
+  .chip .go { cursor: pointer; color: var(--ink); }
+  .chip[aria-current="true"] { border-color: var(--accent); background: var(--accent-tint); }
+
+  /* ---------- place line ---------- */
+  .place { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 16px 0 12px; }
+  .place h2 { font-size: 22px; margin: 0; font-weight: 600; }
+  .place .meta { color: var(--muted); font-size: 13px; }
+  .alts { font-size: 12.5px; color: var(--muted); }
+  .alts button { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: 12.5px; }
+
+  /* ---------- alert band ---------- */
+  .alerts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .alert {
+    display: grid; grid-template-columns: 4px auto 1fr auto; align-items: center; gap: 0 12px;
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 3px;
+    padding: 9px 12px 9px 0; overflow: hidden;
+  }
+  .alert .stripe { grid-row: 1; align-self: stretch; background: var(--muted); margin-right: 8px; }
+  .alert[data-sev="crit"] .stripe { background: var(--crit); }
+  .alert[data-sev="warn"] .stripe { background: var(--warn); }
+  .alert[data-sev="ok"] .stripe { background: var(--calm); }
+  .alert .kind { font-weight: 600; font-size: 14px; }
+  .alert[data-sev="crit"] .kind { color: var(--crit); }
+  .alert[data-sev="warn"] .kind { color: var(--warn); }
+  .alert[data-sev="ok"] .kind { color: var(--calm); }
+  .alert .what { color: var(--ink-2); font-size: 13.5px; }
+  .alert .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  /* ---------- panels ---------- */
+  .grid-now { display: grid; grid-template-columns: minmax(240px, 1.05fr) minmax(230px, .95fr) minmax(230px, 1fr); gap: 14px; }
+  @media (max-width: 860px) { .grid-now { grid-template-columns: 1fr 1fr; } .grid-now > .panel:last-child { grid-column: 1 / -1; } }
+  @media (max-width: 600px) { .grid-now { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 16px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .panel > h3 {
+    margin: 0 0 12px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .temp-now { display: flex; align-items: baseline; gap: 8px; }
+  .temp-now .val { font-size: 58px; line-height: .95; font-weight: 500; letter-spacing: -.03em; }
+  .temp-now .unit { font-size: 20px; color: var(--muted); }
+  .feels { color: var(--ink-2); font-size: 14px; margin: 6px 0 14px; }
+  .readouts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 14px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+  .ro .k { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .ro .v { font-size: 17px; }
+
+  .dial { display: block; width: 100%; max-width: 220px; margin: 0 auto; }
+  .wind-read { text-align: center; margin-top: 4px; }
+  .wind-read .big { font-size: 26px; }
+  .wind-read .sub { font-size: 13px; color: var(--ink-2); }
+
+  .ladder { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; margin: 14px 0 6px; }
+  .ladder i { display: block; height: 14px; border-radius: 1px; }
+  .ladder-axis { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; font-size: 9.5px; color: var(--muted); text-align: center; }
+  .ladder-marks { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; font-size: 10px; text-align: center; height: 14px; color: var(--ink); }
+  .ladder-marks span { font-weight: 600; }
+  .legend-inline { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend-inline b { color: var(--ink-2); font-weight: 600; }
+
+  .fire-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 8px; }
+  .fire-scale i { height: 22px; border-radius: 2px; border: 1px solid transparent; display: block; }
+  .fire-scale i[data-on="1"] { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .fire-labels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; font-size: 9.5px; color: var(--muted); text-align: center; }
+  .fire-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .fire-head .lvl { font-size: 26px; font-weight: 600; }
+  .fire-head .txt { font-size: 14px; color: var(--ink-2); }
+  .parts { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+  .part { display: grid; grid-template-columns: 88px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; }
+  .part .track { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+  .part .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .part .pct { text-align: right; color: var(--ink-2); font-size: 11.5px; }
+
+  /* ---------- forecast ---------- */
+  section.block { margin-top: 26px; }
+  .block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .block-head h2 { font-size: 17px; margin: 0; font-weight: 600; }
+  .block-head .hint { font-size: 12.5px; color: var(--muted); }
+  .chart-card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; }
+  .chart-card svg { display: block; min-width: 520px; width: 100%; height: auto; }
+  .toggle { font-size: 12.5px; padding: 5px 10px; }
+
+  table.data { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 520px; }
+  table.data th, table.data td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+  table.data th:first-child, table.data td:first-child { text-align: left; }
+  table.data thead th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* ---------- states ---------- */
+  .state {
+    background: var(--surface); border: 1px solid var(--line-soft); border-left: 4px solid var(--muted);
+    border-radius: 3px; padding: 14px 16px; margin-bottom: 18px;
+  }
+  .state[data-sev="warn"] { border-left-color: var(--warn); background: var(--warn-tint); }
+  .state[data-sev="crit"] { border-left-color: var(--crit); background: var(--crit-tint); }
+  .state h3 { margin: 0 0 4px; font-size: 15px; }
+  .state p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .state p + p { margin-top: 6px; }
+  .skeleton .panel { opacity: .55; }
+  .dash { color: var(--muted); }
+
+  footer.foot { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  footer.foot h3 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 6px; color: var(--ink-2); }
+  footer.foot ul { margin: 0 0 12px; padding-left: 18px; }
+  footer.foot li { margin-bottom: 2px; }
+
+  #tip {
+    position: fixed; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: var(--ink); color: var(--paper); font-size: 12px; line-height: 1.45;
+    padding: 7px 9px; border-radius: 3px; max-width: 240px; box-shadow: 0 6px 20px -8px rgba(0,0,0,.5);
+  }
+  #tip b { font-family: "IBM Plex Sans Condensed", sans-serif; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Időjárás-ügyelet</h1>
+      <p class="tagline">Nem csak a hőmérséklet: a széllökés, az UV és a szárazság az, ami eldönti, kell-e tenni valamit. Open-Meteo-mérések a CST connectoron át.</p>
+    </div>
+    <div class="stamp">
+      <div class="live" id="live" data-state="load"><span class="dot"></span><span id="live-txt">csatlakozás</span></div>
+      <div id="stamp-time">frissítve: <span class="num dash">––:––</span></div>
+    </div>
+  </header>
+
+  <div class="console">
+    <form class="find" id="find" autocomplete="off">
+      <input type="search" id="q" placeholder="Helynév — pl. Szeged, Kréta, Lisszabon" aria-label="Helynév">
+      <button class="primary" type="submit">Lekérdezés</button>
+    </form>
+    <div class="watchlist" id="watchlist"><span class="label">Figyelt helyek</span></div>
+  </div>
+
+  <div id="place-line" class="place">
+    <h2 id="place-name">Budapest</h2>
+    <span class="meta" id="place-meta">betöltés…</span>
+  </div>
+
+  <div id="notice"></div>
+  <div class="alerts" id="alerts"></div>
+
+  <div class="grid-now" id="now-grid">
+    <div class="panel">
+      <h3>Aktuális mérés</h3>
+      <div class="temp-now"><span class="val num" id="t-now">––</span><span class="unit">°C</span></div>
+      <p class="feels">hőérzet <span class="num" id="t-feels">––</span> °C</p>
+      <div class="readouts">
+        <div class="ro"><div class="k">Páratartalom</div><div class="v num" id="r-hum">––</div></div>
+        <div class="ro"><div class="k">Csapadék most</div><div class="v num" id="r-prec">––</div></div>
+        <div class="ro"><div class="k">Szél</div><div class="v num" id="r-wind">––</div></div>
+        <div class="ro"><div class="k">Lökés</div><div class="v num" id="r-gust">––</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Széljárás</h3>
+      <svg class="dial" id="dial" viewBox="0 0 200 200" role="img" aria-label="Széliránytű"></svg>
+      <div class="wind-read">
+        <div class="big num" id="w-dir">––</div>
+        <div class="sub" id="w-desc">irány és erősség betöltés alatt</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Szélerősség — Beaufort</h3>
+      <div class="ladder" id="ladder"></div>
+      <div class="ladder-axis" id="ladder-axis"></div>
+      <div class="ladder-marks" id="ladder-marks"></div>
+      <div class="legend-inline">
+        <span><b>▲</b> tartós szél</span><span><b>◆</b> széllökés</span>
+        <span>7-es fokozattól faágak törnek, 8-tól gyaloglás is nehéz.</span>
+      </div>
+      <h3 style="margin-top:18px">Tűzveszély</h3>
+      <div class="fire-head"><span class="lvl num" id="fire-lvl">–</span><span class="txt" id="fire-txt">nincs adat</span></div>
+      <div class="fire-scale" id="fire-scale"></div>
+      <div class="fire-labels"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+      <div class="parts" id="fire-parts"></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>Hét nap — hőmérséklet-sávok</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="hint" id="dry-note"></span>
+        <button class="toggle" id="tbl-toggle" aria-expanded="false">Táblázat</button>
+      </div>
+    </div>
+    <div class="chart-card"><svg id="days-chart" role="img" aria-label="Napi minimum- és maximum-hőmérsékletek"></svg></div>
+    <div class="chart-card" id="tbl-wrap" hidden></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>Következő órák — szél és lökés</h2>
+      <span class="hint">Oszlop = széllökés, sötét belső sáv = tartós szél, nyíl = honnan fúj.</span>
+    </div>
+    <div class="chart-card"><svg id="hours-chart" role="img" aria-label="Óránkénti szél és széllökés"></svg></div>
+  </section>
+
+  <footer class="foot">
+    <h3>Mikor szól a figyelő</h3>
+    <ul>
+      <li><b>Szél:</b> 6-os Beaufort széllökéstől figyelmeztet, 8-astól riaszt.</li>
+      <li><b>Eső:</b> napi 8 mm felett figyelmeztet, 15 mm felett riaszt.</li>
+      <li><b>Hőség / hideg:</b> 30 °C, illetve fagypont alatti maximum a küszöb; 34 °C-tól riasztás.</li>
+      <li><b>UV:</b> 6-os indextől figyelmeztet, 8-tól riaszt.</li>
+      <li><b>Tűzveszély:</b> a connector 1–5-ös indexe, 3-tól figyelmeztet, 4-től riaszt.</li>
+    </ul>
+    <p>Az adat forrása az Open-Meteo, a <b>CST</b> connector <code>weather_context</code> eszközén keresztül; a lekérés a te fiókoddal fut. A tűzveszélyességi index a connector egyszerűsített számítása (hőmérséklet, szél, szárazság, csapadékmentes napok) — tájékoztató érték, nem hatósági fokozat.</p>
+  </footer>
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SERVER = "CST", TOOL = "weather_context", DAYS = 7, HOURS = 12;
+  var HU_DAY = ["vas", "hét", "ked", "sze", "csü", "pén", "szo"];
+  var BF = ["szélcsend","alig érezhető","gyenge szellő","gyenge szél","mérsékelt szél","élénk szél","erős szél","viharos szél","viharos erejű szél","vihar","erős vihar","hevesvihar","orkán"];
+  var mcpNs = null, unwatch = null, current = null, lastData = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- watchlist (per-viewer convenience) ---------- */
+  function loadList() {
+    try {
+      var raw = localStorage.getItem("ugyelet.helyek");
+      var v = raw ? JSON.parse(raw) : null;
+      return Array.isArray(v) ? v.slice(0, 8) : [];
+    } catch (e) { return []; }
+  }
+  function saveList(list) {
+    try { localStorage.setItem("ugyelet.helyek", JSON.stringify(list.slice(0, 8))); } catch (e) {}
+  }
+  var watchlist = loadList();
+  if (!watchlist.length) watchlist = [{ label: "Budapest", place: "Budapest" }, { label: "Szeged", place: "Szeged" }];
+
+  function renderWatchlist() {
+    var box = $("watchlist");
+    box.innerHTML = '<span class="label">Figyelt helyek</span>';
+    watchlist.forEach(function (item, i) {
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      if (current && current.label === item.label) chip.setAttribute("aria-current", "true");
+      var go = document.createElement("span");
+      go.className = "go"; go.tabIndex = 0; go.setAttribute("role", "button");
+      go.textContent = item.label;
+      go.onclick = function () { select(item); };
+      go.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(item); } };
+      var del = document.createElement("button");
+      del.type = "button"; del.textContent = "×";
+      del.setAttribute("aria-label", item.label + " törlése a figyelt helyekről");
+      del.onclick = function () { watchlist.splice(i, 1); saveList(watchlist); renderWatchlist(); };
+      chip.appendChild(go); chip.appendChild(del);
+      box.appendChild(chip);
+    });
+    var add = document.createElement("button");
+    add.type = "button"; add.className = "toggle"; add.textContent = "+ ez a hely";
+    add.onclick = function () {
+      if (!current) return;
+      var name = (lastData && lastData.hely && lastData.hely.feloldva && lastData.hely.feloldva.nev) || current.label;
+      if (watchlist.some(function (w) { return w.label === name; })) return;
+      watchlist.push({ label: name, place: current.place, lat: current.lat, lon: current.lon });
+      saveList(watchlist); renderWatchlist();
+    };
+    box.appendChild(add);
+  }
+
+  /* ---------- payload normalising ---------- */
+  function unwrap(res) {
+    var p = res && res.payload;
+    if (p == null && res && Array.isArray(res.content)) {
+      for (var i = 0; i < res.content.length; i++) {
+        if (res.content[i] && res.content[i].type === "text") { p = res.content[i].text; break; }
+      }
+    }
+    for (var n = 0; n < 4; n++) {
+      if (typeof p === "string") {
+        try { p = JSON.parse(p); } catch (e) { break; }
+      } else if (p && typeof p === "object" && !p.hely && typeof p.result !== "undefined") {
+        p = p.result;
+      } else break;
+    }
+    return p;
+  }
+
+  /* ---------- status line ---------- */
+  function setLive(state, txt) {
+    $("live").setAttribute("data-state", state);
+    $("live-txt").textContent = txt;
+  }
+  function setStamp(ms) {
+    var d = new Date(ms);
+    $("stamp-time").innerHTML = "frissítve: <span class=\"num\">" +
+      String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + "</span>";
+  }
+  function notice(sev, title, body, body2) {
+    $("notice").innerHTML = "";
+    if (!title) return;
+    var d = document.createElement("div");
+    d.className = "state"; d.setAttribute("data-sev", sev || "info");
+    var h = document.createElement("h3"); h.textContent = title; d.appendChild(h);
+    var p = document.createElement("p"); p.textContent = body; d.appendChild(p);
+    if (body2) { var p2 = document.createElement("p"); p2.textContent = body2; d.appendChild(p2); }
+    $("notice").appendChild(d);
+  }
+
+  /* ---------- tooltip ---------- */
+  var tip = $("tip");
+  function bindTip(el, html) {
+    el.addEventListener("mouseenter", function () { tip.innerHTML = html; tip.style.opacity = "1"; });
+    el.addEventListener("mousemove", function (e) {
+      var x = Math.min(e.clientX + 14, window.innerWidth - 250);
+      tip.style.left = x + "px";
+      tip.style.top = Math.max(8, e.clientY - 12) + "px";
+    });
+    el.addEventListener("mouseleave", function () { tip.style.opacity = "0"; });
+  }
+
+  /* ---------- geometry helpers ---------- */
+  function pt(cx, cy, r, bearing) {
+    var a = (bearing - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
+  function num(v, d) { return (v == null || isNaN(v)) ? "–" : Number(v).toFixed(d == null ? 0 : d); }
+
+  /* ---------- renderers ---------- */
+  function renderDial(now) {
+    var s = [], cx = 100, cy = 100, R = 74;
+    s.push('<circle cx="100" cy="100" r="' + R + '" fill="var(--surface-2)" stroke="var(--line-soft)" stroke-width="1"/>');
+    for (var b = 0; b < 360; b += 15) {
+      var big = b % 45 === 0;
+      var a = pt(cx, cy, R - (big ? 10 : 5), b), c = pt(cx, cy, R, b);
+      s.push('<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + c[0].toFixed(1) + '" y2="' + c[1].toFixed(1) +
+        '" stroke="var(--line)" stroke-width="' + (big ? 1.4 : 1) + '"/>');
+    }
+    [["É", 0], ["K", 90], ["D", 180], ["Ny", 270]].forEach(function (m) {
+      var p = pt(cx, cy, R + 13, m[1]);
+      s.push('<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" fill="var(--muted)" font-size="12" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="central">' + m[0] + '</text>');
+    });
+    if (now && now.szel_irany_fok != null) {
+      var from = now.szel_irany_fok;
+      var tail = pt(cx, cy, R - 14, from), head = pt(cx, cy, 26, from + 180);
+      s.push('<line x1="' + tail[0].toFixed(1) + '" y1="' + tail[1].toFixed(1) + '" x2="' + head[0].toFixed(1) + '" y2="' + head[1].toFixed(1) +
+        '" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>');
+      var l = pt(cx, cy, 34, from + 180 - 16), r = pt(cx, cy, 34, from + 180 + 16);
+      s.push('<polygon points="' + head[0].toFixed(1) + "," + head[1].toFixed(1) + " " + l[0].toFixed(1) + "," + l[1].toFixed(1) +
+        " " + r[0].toFixed(1) + "," + r[1].toFixed(1) + '" fill="var(--accent)"/>');
+      s.push('<circle cx="100" cy="100" r="21" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>');
+      s.push('<text x="100" y="97" text-anchor="middle" fill="var(--ink)" font-size="17" font-family="IBM Plex Mono, monospace" font-weight="500">' + num(now.szel_kmh) + '</text>');
+      s.push('<text x="100" y="111" text-anchor="middle" fill="var(--muted)" font-size="8.5" font-family="IBM Plex Sans Condensed, sans-serif" letter-spacing="0.5">KM/H</text>');
+    } else {
+      s.push('<circle cx="100" cy="100" r="21" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>');
+      s.push('<text x="100" y="105" text-anchor="middle" fill="var(--muted)" font-size="17" font-family="IBM Plex Mono, monospace">––</text>');
+    }
+    $("dial").innerHTML = s.join("");
+  }
+
+  function renderLadder(now) {
+    var cells = [], axis = [], marks = [];
+    for (var i = 0; i <= 12; i++) {
+      var t = i / 12;
+      var col = "color-mix(in srgb, var(--accent) " + Math.round(14 + t * 86) + "%, var(--surface-2))";
+      cells.push('<i style="background:' + col + '"></i>');
+      axis.push("<span>" + (i % 2 === 0 ? i : "") + "</span>");
+      var m = "";
+      if (now && now.szel_beaufort === i) m += "▲";
+      if (now && now.szellokes_beaufort === i) m += "◆";
+      marks.push("<span>" + m + "</span>");
+    }
+    $("ladder").innerHTML = cells.join("");
+    $("ladder-axis").innerHTML = axis.join("");
+    $("ladder-marks").innerHTML = marks.join("");
+  }
+
+  function renderFire(f) {
+    if (!f) return;
+    var lvl = f.fokozat || 0;
+    $("fire-lvl").textContent = lvl ? lvl + "/5" : "–";
+    $("fire-txt").textContent = f.cimke ? f.cimke + (f.biztos === false ? " (hiányos adat)" : "") : "nincs adat";
+    var sc = [];
+    for (var i = 1; i <= 5; i++) {
+      var t = (i - 1) / 4;
+      var col = i <= 2 ? "color-mix(in srgb, var(--calm) " + (30 + t * 40) + "%, var(--surface-2))"
+        : i === 3 ? "color-mix(in srgb, var(--warn) 55%, var(--surface-2))"
+          : "color-mix(in srgb, var(--crit) " + (i === 4 ? 60 : 90) + "%, var(--surface-2))";
+      sc.push('<i data-on="' + (i === lvl ? 1 : 0) + '" style="background:' + col + '"></i>');
+    }
+    $("fire-scale").innerHTML = sc.join("");
+    var names = { homerseklet: "hőmérséklet", szel: "szél", szarazsag: "szárazság", szaraz_napok: "száraz napok" };
+    var parts = f.reszek || {}, rows = [];
+    Object.keys(names).forEach(function (k) {
+      if (parts[k] == null) return;
+      var v = Math.max(0, Math.min(1, parts[k]));
+      rows.push('<div class="part"><span>' + names[k] + '</span><span class="track"><span class="fill" style="width:' +
+        (v * 100).toFixed(0) + '%"></span></span><span class="pct num">' + Math.round(v * 100) + "%</span></div>");
+    });
+    $("fire-parts").innerHTML = rows.join("");
+  }
+
+  function renderDays(days) {
+    var svg = $("days-chart");
+    if (!days || !days.length) { svg.innerHTML = ""; return; }
+    var padL = 92, padR = 128, padT = 30, padB = 22, rowH = 34;
+    var W = 760, H = padT + days.length * rowH + padB;
+    var lo = Math.min.apply(null, days.map(function (d) { return d.min_c; }));
+    var hi = Math.max.apply(null, days.map(function (d) { return d.max_c; }));
+    lo = Math.floor((lo - 2) / 5) * 5; hi = Math.ceil((hi + 2) / 5) * 5;
+    var plotW = W - padL - padR;
+    var x = function (v) { return padL + (v - lo) / (hi - lo) * plotW; };
+    var s = [];
+
+    s.push('<defs><linearGradient id="tempramp" gradientUnits="userSpaceOnUse" x1="' + padL + '" x2="' + (padL + plotW) + '" y1="0" y2="0">' +
+      '<stop offset="0" stop-color="var(--cold)"/><stop offset="0.5" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--hot)"/></linearGradient></defs>');
+
+    for (var t = lo; t <= hi; t += 5) {
+      s.push('<line x1="' + x(t).toFixed(1) + '" y1="' + (padT - 8) + '" x2="' + x(t).toFixed(1) + '" y2="' + (H - padB) + '" stroke="var(--line-soft)" stroke-width="1"/>');
+      s.push('<text x="' + x(t).toFixed(1) + '" y="' + (padT - 14) + '" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="IBM Plex Mono, monospace">' + t + "°</text>");
+    }
+    s.push('<text x="' + padL + '" y="14" fill="var(--muted)" font-size="10" font-family="IBM Plex Sans Condensed, sans-serif" letter-spacing="1.2" text-anchor="start">HŐMÉRSÉKLET °C</text>');
+    s.push('<text x="' + (W - padR + 12) + '" y="14" fill="var(--muted)" font-size="10" font-family="IBM Plex Sans Condensed, sans-serif" letter-spacing="1.2">CSAPADÉK · LÖKÉS · UV</text>');
+
+    days.forEach(function (d, i) {
+      var y = padT + i * rowH + rowH / 2;
+      var dt = new Date(d.datum + "T12:00:00");
+      var label = HU_DAY[dt.getDay()] + " " + (dt.getMonth() + 1) + "." + dt.getDate() + ".";
+      s.push('<text x="' + (padL - 12) + '" y="' + y + '" text-anchor="end" dominant-baseline="central" fill="' +
+        (i === 0 ? "var(--ink)" : "var(--ink-2)") + '" font-size="12.5" font-family="IBM Plex Sans, sans-serif" font-weight="' + (i === 0 ? 600 : 400) + '">' + esc(label) + "</text>");
+      var x1 = x(d.min_c), x2 = x(d.max_c);
+      s.push('<rect x="' + x1.toFixed(1) + '" y="' + (y - 5) + '" width="' + Math.max(8, x2 - x1).toFixed(1) + '" height="10" rx="4" fill="url(#tempramp)"/>');
+      s.push('<text x="' + (x1 - 8).toFixed(1) + '" y="' + y + '" text-anchor="end" dominant-baseline="central" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">' + num(d.min_c) + "</text>");
+      s.push('<text x="' + (x2 + 8).toFixed(1) + '" y="' + y + '" dominant-baseline="central" fill="var(--ink)" font-size="11.5" font-family="IBM Plex Mono, monospace">' + num(d.max_c) + "</text>");
+
+      var bx = W - padR + 12;
+      var rain = d.csapadek_mm || 0;
+      s.push('<text x="' + bx + '" y="' + y + '" dominant-baseline="central" fill="' + (rain >= 8 ? "var(--cold)" : "var(--muted)") +
+        '" font-size="11" font-family="IBM Plex Mono, monospace">' + (rain > 0 ? num(rain, 1) + " mm" : "—") + "</text>");
+      s.push('<text x="' + (bx + 52) + '" y="' + y + '" dominant-baseline="central" fill="' + ((d.szellokes_max_kmh || 0) >= 60 ? "var(--crit)" : "var(--ink-2)") +
+        '" font-size="11" font-family="IBM Plex Mono, monospace">' + num(d.szellokes_max_kmh) + "</text>");
+      s.push('<text x="' + (bx + 96) + '" y="' + y + '" dominant-baseline="central" fill="' + ((d.uv_max || 0) >= 6 ? "var(--warn)" : "var(--muted)") +
+        '" font-size="11" font-family="IBM Plex Mono, monospace">' + num(d.uv_max, 1) + "</text>");
+
+      s.push('<rect class="hitrow" data-i="' + i + '" x="0" y="' + (padT + i * rowH) + '" width="' + W + '" height="' + rowH + '" fill="transparent"/>');
+    });
+
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.innerHTML = s.join("");
+    Array.prototype.forEach.call(svg.querySelectorAll(".hitrow"), function (r) {
+      var d = days[+r.getAttribute("data-i")];
+      var dt = new Date(d.datum + "T12:00:00");
+      bindTip(r, "<b>" + esc(HU_DAY[dt.getDay()] + " " + d.datum) + "</b><br>" +
+        num(d.min_c, 1) + " – " + num(d.max_c, 1) + " °C<br>" +
+        "csapadék " + num(d.csapadek_mm, 1) + " mm · szél " + num(d.szel_max_kmh) + " km/h<br>" +
+        "lökés " + num(d.szellokes_max_kmh) + " km/h · UV " + num(d.uv_max, 1));
+    });
+  }
+
+  function renderTable(days) {
+    var h = '<table class="data"><thead><tr><th>Nap</th><th>Min °C</th><th>Max °C</th><th>Csapadék mm</th><th>Szél km/h</th><th>Lökés km/h</th><th>UV</th></tr></thead><tbody>';
+    days.forEach(function (d) {
+      var dt = new Date(d.datum + "T12:00:00");
+      h += "<tr><td>" + esc(HU_DAY[dt.getDay()] + " " + d.datum) + '</td><td class="num">' + num(d.min_c, 1) +
+        '</td><td class="num">' + num(d.max_c, 1) + '</td><td class="num">' + num(d.csapadek_mm, 1) +
+        '</td><td class="num">' + num(d.szel_max_kmh) + '</td><td class="num">' + num(d.szellokes_max_kmh) +
+        '</td><td class="num">' + num(d.uv_max, 1) + "</td></tr>";
+    });
+    $("tbl-wrap").innerHTML = h + "</tbody></table>";
+  }
+
+  function renderHours(hours) {
+    var svg = $("hours-chart");
+    if (!hours || !hours.length) {
+      svg.setAttribute("viewBox", "0 0 760 60");
+      svg.innerHTML = '<text x="12" y="34" fill="var(--muted)" font-size="12.5" font-family="IBM Plex Sans, sans-serif">Óránkénti bontás ehhez a lekéréshez nem érkezett.</text>';
+      return;
+    }
+    var W = 760, H = 190, padT = 26, base = 128, padL = 34, padR = 14;
+    var maxG = Math.max.apply(null, hours.map(function (h) { return h.szellokes_kmh || 0; }));
+    var top = Math.max(20, Math.ceil(maxG / 10) * 10);
+    var slot = (W - padL - padR) / hours.length, bw = Math.min(30, slot - 10);
+    var y = function (v) { return base - (v / top) * (base - padT); };
+    var s = [];
+    [0, top / 2, top].forEach(function (v) {
+      s.push('<line x1="' + padL + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y(v).toFixed(1) + '" stroke="var(--line-soft)" stroke-width="1"/>');
+      s.push('<text x="' + (padL - 6) + '" y="' + y(v).toFixed(1) + '" text-anchor="end" dominant-baseline="central" fill="var(--muted)" font-size="10" font-family="IBM Plex Mono, monospace">' + Math.round(v) + "</text>");
+    });
+    s.push('<text x="' + padL + '" y="12" fill="var(--muted)" font-size="10" letter-spacing="1.2" font-family="IBM Plex Sans Condensed, sans-serif">KM/H</text>');
+    hours.forEach(function (h, i) {
+      var cx = padL + slot * i + slot / 2, g = h.szellokes_kmh || 0, w = h.szel_kmh || 0;
+      var gy = y(g), wy = y(w);
+      s.push('<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + gy.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(2, base - gy).toFixed(1) +
+        '" rx="4" fill="color-mix(in srgb, var(--accent) 30%, var(--surface))"/>');
+      s.push('<rect x="' + (cx - bw / 2 + 5).toFixed(1) + '" y="' + wy.toFixed(1) + '" width="' + (bw - 10).toFixed(1) + '" height="' + Math.max(2, base - wy).toFixed(1) +
+        '" rx="3" fill="var(--accent)"/>');
+      if (g >= 62) s.push('<circle cx="' + cx.toFixed(1) + '" cy="' + (gy - 8).toFixed(1) + '" r="3" fill="var(--crit)"/>');
+      var hh = h.ido ? h.ido.slice(11, 13) : "";
+      s.push('<text x="' + cx.toFixed(1) + '" y="' + (base + 14) + '" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="IBM Plex Mono, monospace">' + esc(hh) + "</text>");
+      var ax = cx, ay = base + 32;
+      s.push('<g transform="translate(' + ax.toFixed(1) + ',' + ay + ') rotate(' + ((h.szel_irany_fok || 0) + 180) + ')">' +
+        '<path d="M0,-7 L0,7 M0,7 L-3.4,2.2 M0,7 L3.4,2.2" stroke="var(--ink-2)" stroke-width="1.5" fill="none" stroke-linecap="round"/></g>');
+      s.push('<rect class="hith" data-i="' + i + '" x="' + (cx - slot / 2).toFixed(1) + '" y="0" width="' + slot.toFixed(1) + '" height="' + H + '" fill="transparent"/>');
+    });
+    s.push('<text x="' + (W - padR) + '" y="' + (base + 36) + '" text-anchor="end" fill="var(--muted)" font-size="10" font-family="IBM Plex Sans, sans-serif">a nyíl a szél irányába mutat · piros pont: 8 Beaufort feletti lökés</text>');
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.innerHTML = s.join("");
+    Array.prototype.forEach.call(svg.querySelectorAll(".hith"), function (r) {
+      var h = hours[+r.getAttribute("data-i")];
+      bindTip(r, "<b>" + esc((h.ido || "").slice(11, 16)) + "</b><br>tartós " + num(h.szel_kmh) + " km/h (" + (h.szel_beaufort != null ? h.szel_beaufort + " Bf" : "–") + ")<br>" +
+        "lökés " + num(h.szellokes_kmh) + " km/h (" + (h.szellokes_beaufort != null ? h.szellokes_beaufort + " Bf" : "–") + ")<br>" + esc(h.szel_irany || ""));
+    });
+  }
+
+  /* ---------- warnings ---------- */
+  function dayName(datum) {
+    var dt = new Date(datum + "T12:00:00");
+    var today = new Date();
+    if (dt.toDateString() === today.toDateString()) return "ma";
+    var tomorrow = new Date(today.getTime() + 864e5);
+    if (dt.toDateString() === tomorrow.toDateString()) return "holnap";
+    return HU_DAY[dt.getDay()] + " " + (dt.getMonth() + 1) + "." + dt.getDate() + ".";
+  }
+  function renderAlerts(d) {
+    var out = [], now = d.most || {}, days = d.napok || [];
+    if (now.szellokes_beaufort >= 6) {
+      out.push([now.szellokes_beaufort >= 8 ? "crit" : "warn", "Széllökés",
+        num(now.szellokes_kmh) + " km/h — " + now.szellokes_beaufort + " Beaufort, " + (now.szel_irany || "") + " irányból", "most"]);
+    }
+    var fire = d.tuzveszely;
+    if (fire && fire.fokozat >= 3) {
+      out.push([fire.fokozat >= 4 ? "crit" : "warn", "Tűzveszély",
+        fire.cimke + " fokozat (" + fire.fokozat + "/5), " + (d.csapadekmentes_napok || 0) + " csapadékmentes nap", "most"]);
+    }
+    days.slice(0, 5).forEach(function (day) {
+      if (day.csapadek_mm >= 8) out.push([day.csapadek_mm >= 15 ? "crit" : "warn", "Csapadék", num(day.csapadek_mm, 1) + " mm várható", dayName(day.datum)]);
+      if (day.szellokes_max_kmh >= 62) out.push([day.szellokes_max_kmh >= 75 ? "crit" : "warn", "Viharos szél", "lökésmaximum " + num(day.szellokes_max_kmh) + " km/h", dayName(day.datum)]);
+      if (day.max_c >= 30) out.push([day.max_c >= 34 ? "crit" : "warn", "Hőség", "napi maximum " + num(day.max_c, 1) + " °C", dayName(day.datum)]);
+      if (day.max_c <= 0) out.push([day.max_c <= -5 ? "crit" : "warn", "Fagy", "a maximum is " + num(day.max_c, 1) + " °C", dayName(day.datum)]);
+      if (day.uv_max >= 6) out.push([day.uv_max >= 8 ? "crit" : "warn", "UV-terhelés", "index " + num(day.uv_max, 1), dayName(day.datum)]);
+    });
+    out.sort(function (a, b) { return (a[0] === "crit" ? 0 : 1) - (b[0] === "crit" ? 0 : 1); });
+    out = out.slice(0, 6);
+    if (!out.length) out.push(["ok", "Nyugalom", "A következő öt napban egyik küszöböt sem lépi át az előrejelzés.", ""]);
+    $("alerts").innerHTML = out.map(function (a) {
+      return '<div class="alert" data-sev="' + a[0] + '"><span class="stripe"></span><span class="kind">' + esc(a[1]) +
+        '</span><span class="what">' + esc(a[2]) + '</span><span class="when">' + esc(a[3]) + "</span></div>";
+    }).join("");
+  }
+
+  /* ---------- place header ---------- */
+  function renderPlace(d) {
+    var h = d.hely || {}, f = h.feloldva || {};
+    $("place-name").textContent = f.nev || (current && current.label) || "Ismeretlen hely";
+    var bits = [];
+    if (f.megye && f.megye !== f.nev) bits.push(f.megye);
+    if (f.orszag) bits.push(f.orszag);
+    if (h.lat != null) bits.push(num(h.lat, 3) + "° / " + num(h.lon, 3) + "°");
+    if (h.magassag_m != null) bits.push(num(h.magassag_m) + " m");
+    $("place-meta").textContent = bits.join(" · ");
+    var line = $("place-line");
+    var old = line.querySelector(".alts");
+    if (old) old.remove();
+    var alts = f.tovabbi_talalatok || [];
+    if (alts.length) {
+      var span = document.createElement("span");
+      span.className = "alts";
+      span.appendChild(document.createTextNode("nem ezt kerested? "));
+      alts.slice(0, 3).forEach(function (a, i) {
+        if (i) span.appendChild(document.createTextNode(" · "));
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = a.nev + (a.orszag ? " (" + a.orszag + ")" : "");
+        b.onclick = function () { select({ label: a.nev + (a.orszag ? ", " + a.orszag : ""), lat: a.lat, lon: a.lon }); };
+        span.appendChild(b);
+      });
+      line.appendChild(span);
+    }
+  }
+
+  function renderAll(d, stampMs) {
+    lastData = d;
+    var now = d.most || {};
+    renderPlace(d);
+    renderAlerts(d);
+    $("t-now").textContent = num(now.homerseklet_c, 1);
+    $("t-feels").textContent = num(now.hoerzet_c, 1);
+    $("r-hum").innerHTML = num(now.paratartalom_pct) + ' <span style="font-size:13px;color:var(--muted)">%</span>';
+    $("r-prec").innerHTML = num(now.csapadek_mm, 1) + ' <span style="font-size:13px;color:var(--muted)">mm</span>';
+    $("r-wind").innerHTML = num(now.szel_kmh) + ' <span style="font-size:13px;color:var(--muted)">km/h</span>';
+    $("r-gust").innerHTML = num(now.szellokes_kmh) + ' <span style="font-size:13px;color:var(--muted)">km/h</span>';
+    renderDial(now);
+    $("w-dir").textContent = now.szel_irany ? now.szel_irany + " " + num(now.szel_irany_fok) + "°" : "––";
+    $("w-desc").textContent = (now.szel_beaufort != null ? now.szel_beaufort + " Bf — " + (now.szel_beaufort_cimke || BF[now.szel_beaufort] || "") : "") +
+      (now.szellokes_beaufort != null ? " · lökésben " + now.szellokes_beaufort + " Bf" : "");
+    renderLadder(now);
+    renderFire(d.tuzveszely);
+    renderDays(d.napok || []);
+    renderTable(d.napok || []);
+    renderHours(d.orak || []);
+    var dry = d.csapadekmentes_napok;
+    $("dry-note").textContent = dry != null ? dry + " csapadékmentes nap a sorozatban" : "";
+    document.getElementById("now-grid").classList.remove("skeleton");
+    setStamp(stampMs);
+    renderWatchlist();
+  }
+
+  /* ---------- error branching ---------- */
+  function showError(err) {
+    var code = (err && err.code) || "upstream_error";
+    setLive("err", "hiba");
+    if (code === "needs_reauth") {
+      notice("warn", "A CST connector kapcsolata lejárt",
+        "Lépj be újra: claude.ai → Beállítások → Connectors → CST, aztán töltsd újra ezt az oldalt.");
+    } else if (code === "server_not_connected") {
+      notice("warn", "Nincs csatlakoztatva a CST connector",
+        "Ez az oldal a CST connector weather_context eszközéből dolgozik. Add hozzá: claude.ai → Beállítások → Connectors.");
+    } else if (code === "selection_required") {
+      notice("warn", "Több CST connector közül kell választani",
+        "A claude.ai megkérdezi, melyiket használjuk. Válassz egyet, majd töltsd újra az oldalt.");
+    } else if (code === "not_granted" || code === "capability_disabled") {
+      notice("warn", "Ez a nézet nem érheti el a connectorokat",
+        "Nyisd meg az artifactot közvetlenül a claude.ai-on — beágyazott vagy mentett példányban nincs connector-hozzáférés.");
+    } else if (code === "blocked_by_policy" || code === "approval_required") {
+      notice("warn", "A szervezeti szabály tiltja ezt a hívást",
+        "A weather_context eszköz használatához engedély kell az adminisztrátortól.");
+    } else if (code === "tool_error") {
+      notice("warn", "A lekérdezés nem sikerült",
+        (err && err.message) || "Az időjárás-eszköz hibát jelzett.",
+        "Próbáld pontosabb helynévvel, például: Szeged, Hungary.");
+    } else if (code === "server_unavailable") {
+      notice("warn", "Az adatszolgáltató most nem elérhető",
+        "Átmeneti hiba — az oldal magától újrapróbálja a következő frissítéskor.");
+    } else {
+      notice("warn", "Nem érkezett adat", (err && err.message) || "Ismeretlen hiba a lekérdezés közben.");
+    }
+  }
+
+  /* ---------- data flow ---------- */
+  function inputFor(item) {
+    var inp = { days: DAYS, orank: HOURS };
+    if (item.lat != null && item.lon != null && !item.place) { inp.lat = item.lat; inp.lon = item.lon; }
+    else inp.place = item.place || item.label;
+    return inp;
+  }
+
+  function select(item) {
+    current = item;
+    $("place-name").textContent = item.label;
+    $("place-meta").textContent = "lekérdezés…";
+    setLive("load", "lekérdezés");
+    renderWatchlist();
+    if (!mcpNs) return;
+    if (unwatch) { try { unwatch(); } catch (e) {} unwatch = null; }
+    var retried = false;
+    unwatch = mcpNs.watchTool(SERVER, TOOL, inputFor(item), function (ev) {
+      if (ev.type === "data") {
+        var d = unwrap(ev.result);
+        if (!d || !d.hely) {
+          showError({ code: "tool_error", message: (d && d.hiba) || "A válasz nem tartalmazott mérési adatot." });
+          return;
+        }
+        notice(null);
+        setLive("ok", ev.result.cache && ev.result.cache.revalidating ? "frissítés" : "élő");
+        renderAll(d, ev.result.cache ? ev.result.cache.storedAt : Date.now());
+      } else {
+        var err = ev.error || {};
+        if (err.retryable && !retried) {
+          retried = true;
+          setLive("load", "újrapróba");
+          setTimeout(function () { if (current === item) select(item); }, Math.min(err.retryAfterMs || 4000, 20000) + Math.random() * 1500);
+          return;
+        }
+        showError(err);
+      }
+    }, { refetchInterval: 900000 });
+  }
+
+  /* ---------- wiring ---------- */
+  $("find").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("q").value.trim();
+    if (!v) return;
+    select({ label: v, place: v });
+  });
+  $("tbl-toggle").addEventListener("click", function () {
+    var w = $("tbl-wrap"), open = !w.hidden;
+    w.hidden = open;
+    this.setAttribute("aria-expanded", String(!open));
+    this.textContent = open ? "Táblázat" : "Diagram";
+  });
+
+  renderWatchlist();
+  renderDial(null);
+  renderLadder(null);
+  document.getElementById("now-grid").classList.add("skeleton");
+  notice("info", "Csatlakozás az időjárás-adatokhoz",
+    "Az oldal a CST connector weather_context eszközét hívja a te fiókoddal. Az első hívásnál a claude.ai engedélyt kér.");
+
+  claude.use("mcp").then(function (ns) {
+    if (!ns) {
+      setLive("err", "nincs adat");
+      notice("warn", "Ez a nézet nem tud connectort hívni",
+        "Nyisd meg az oldalt közvetlenül a claude.ai artifact-nézetében. A panel felépítése és a küszöbértékek addig is olvashatók.");
+      return;
+    }
+    mcpNs = ns;
+    select(watchlist[0]);
+  }).catch(function () {
+    setLive("err", "nincs adat");
+    notice("warn", "Nem sikerült elindítani a connector-hozzáférést", "Töltsd újra az oldalt.");
+  });
+})();
+</script>

@@ -1,0 +1,6 @@
+# szerkesztői és rendszerfájlok
+*~
+*.swp
+.DS_Store
+.idea/
+.vscode/
