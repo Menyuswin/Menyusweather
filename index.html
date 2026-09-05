@@ -1,8 +1,19 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Időjárás-ügyelet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+
   :root {
     --paper:      #E7ECEF;
     --surface:    #F8FAFB;
@@ -72,7 +83,6 @@
     --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
   }
 
-  * { box-sizing: border-box; }
   body {
     background: var(--paper);
     color: var(--ink);
@@ -243,12 +253,14 @@
   #tip b { font-family: "IBM Plex Sans Condensed", sans-serif; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header class="top">
     <div>
       <h1>Időjárás-ügyelet</h1>
-      <p class="tagline">Nem csak a hőmérséklet: a széllökés, az UV és a szárazság az, ami eldönti, kell-e tenni valamit. Open-Meteo-mérések a CST connectoron át.</p>
+      <p class="tagline">Nem csak a hőmérséklet: a széllökés, az UV és a szárazság az, ami eldönti, kell-e tenni valamit. Élő Open-Meteo mérések, közvetlenül a böngészőből.</p>
     </div>
     <div class="stamp">
       <div class="live" id="live" data-state="load"><span class="dot"></span><span id="live-txt">csatlakozás</span></div>
@@ -338,9 +350,9 @@
       <li><b>Eső:</b> napi 8 mm felett figyelmeztet, 15 mm felett riaszt.</li>
       <li><b>Hőség / hideg:</b> 30 °C, illetve fagypont alatti maximum a küszöb; 34 °C-tól riasztás.</li>
       <li><b>UV:</b> 6-os indextől figyelmeztet, 8-tól riaszt.</li>
-      <li><b>Tűzveszély:</b> a connector 1–5-ös indexe, 3-tól figyelmeztet, 4-től riaszt.</li>
+      <li><b>Tűzveszély:</b> saját, egyszerűsített 1–5-ös index, 3-tól figyelmeztet, 4-től riaszt.</li>
     </ul>
-    <p>Az adat forrása az Open-Meteo, a <b>CST</b> connector <code>weather_context</code> eszközén keresztül; a lekérés a te fiókoddal fut. A tűzveszélyességi index a connector egyszerűsített számítása (hőmérséklet, szél, szárazság, csapadékmentes napok) — tájékoztató érték, nem hatósági fokozat.</p>
+    <p>Az adat forrása az <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> nyilvános, kulcs nélküli API-ja; a lap közvetlenül a te böngésződből hívja, szerver és fiók nélkül. A tűzveszélyességi index ennek az oldalnak a saját, egyszerűsített számítása (hőmérséklet, szél, páratartalom, csapadékmentes napok) — tájékoztató érték, nem hatósági fokozat.</p>
   </footer>
 </div>
 <div id="tip" role="status" aria-live="polite"></div>
@@ -349,10 +361,14 @@
 (function () {
   "use strict";
 
-  var SERVER = "CST", TOOL = "weather_context", DAYS = 7, HOURS = 12;
+  var GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
+  var FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
+  var PAST_DAYS = 14, FORECAST_DAYS = 7, HOURS = 12, POLL_MS = 900000;
   var HU_DAY = ["vas", "hét", "ked", "sze", "csü", "pén", "szo"];
   var BF = ["szélcsend","alig érezhető","gyenge szellő","gyenge szél","mérsékelt szél","élénk szél","erős szél","viharos szél","viharos erejű szél","vihar","erős vihar","hevesvihar","orkán"];
-  var mcpNs = null, unwatch = null, current = null, lastData = null;
+  var COMPASS = ["É","ÉK","K","DK","D","DNy","Ny","ÉNy"];
+  var FIRE_LABEL = ["", "alacsony", "mérsékelt", "közepes", "magas", "rendkívüli"];
+  var current = null, lastData = null, pollTimer = null, reqSeq = 0;
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- watchlist (per-viewer convenience) ---------- */
@@ -400,24 +416,6 @@
     box.appendChild(add);
   }
 
-  /* ---------- payload normalising ---------- */
-  function unwrap(res) {
-    var p = res && res.payload;
-    if (p == null && res && Array.isArray(res.content)) {
-      for (var i = 0; i < res.content.length; i++) {
-        if (res.content[i] && res.content[i].type === "text") { p = res.content[i].text; break; }
-      }
-    }
-    for (var n = 0; n < 4; n++) {
-      if (typeof p === "string") {
-        try { p = JSON.parse(p); } catch (e) { break; }
-      } else if (p && typeof p === "object" && !p.hely && typeof p.result !== "undefined") {
-        p = p.result;
-      } else break;
-    }
-    return p;
-  }
-
   /* ---------- status line ---------- */
   function setLive(state, txt) {
     $("live").setAttribute("data-state", state);
@@ -451,15 +449,161 @@
     el.addEventListener("mouseleave", function () { tip.style.opacity = "0"; });
   }
 
-  /* ---------- geometry helpers ---------- */
+  /* ---------- geometry / format helpers ---------- */
   function pt(cx, cy, r, bearing) {
     var a = (bearing - 90) * Math.PI / 180;
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
   function num(v, d) { return (v == null || isNaN(v)) ? "–" : Number(v).toFixed(d == null ? 0 : d); }
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
-  /* ---------- renderers ---------- */
+  /* ---------- weather-domain helpers ---------- */
+  function beaufort(kmh) {
+    if (kmh == null || isNaN(kmh)) return null;
+    var t = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118];
+    for (var i = 0; i < t.length; i++) if (kmh < t[i]) return i;
+    return 12;
+  }
+  function compassDir(deg) {
+    if (deg == null || isNaN(deg)) return null;
+    var i = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+    return COMPASS[i];
+  }
+
+  /* ---------- Open-Meteo access ---------- */
+  function qs(params) {
+    return Object.keys(params).map(function (k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
+  }
+  function fetchJson(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) {
+        var e = new Error("HTTP " + r.status);
+        e.code = "http_error"; e.retryable = r.status >= 500 || r.status === 429;
+        throw e;
+      }
+      return r.json();
+    }).catch(function (err) {
+      if (err && err.code) throw err;
+      var e = new Error((err && err.message) || "network error");
+      e.code = "network_error"; e.retryable = true;
+      throw e;
+    });
+  }
+  function geocode(name) {
+    return fetchJson(GEO_URL + "?" + qs({ name: name, count: 8, language: "hu", format: "json" }));
+  }
+  function forecastFor(lat, lon) {
+    return fetchJson(FORECAST_URL + "?" + qs({
+      latitude: lat, longitude: lon,
+      current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+      hourly: "wind_speed_10m,wind_gusts_10m,wind_direction_10m",
+      daily: "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max",
+      timezone: "auto", past_days: PAST_DAYS, forecast_days: FORECAST_DAYS, wind_speed_unit: "kmh"
+    }));
+  }
+
+  /* ---------- payload assembly (Open-Meteo -> app's internal shape) ---------- */
+  function buildPlace(geo, fallbackLabel, knownLatLon) {
+    var top = geo && geo.results && geo.results[0];
+    if (!top) {
+      if (knownLatLon) {
+        return { lat: knownLatLon.lat, lon: knownLatLon.lon, magassag_m: null,
+          feloldva: { nev: fallbackLabel, megye: null, orszag: null, tovabbi_talalatok: [] } };
+      }
+      return null;
+    }
+    var alts = (geo.results || []).slice(1, 5).map(function (r) {
+      return { nev: r.name, orszag: r.country, lat: r.latitude, lon: r.longitude };
+    });
+    return {
+      lat: top.latitude, lon: top.longitude, magassag_m: top.elevation,
+      feloldva: { nev: top.name, megye: top.admin1 || null, orszag: top.country || null, tovabbi_talalatok: alts }
+    };
+  }
+
+  function buildNow(om) {
+    var c = om.current || {};
+    var wb = beaufort(c.wind_speed_10m), gb = beaufort(c.wind_gusts_10m);
+    return {
+      homerseklet_c: c.temperature_2m, hoerzet_c: c.apparent_temperature,
+      paratartalom_pct: c.relative_humidity_2m, csapadek_mm: c.precipitation,
+      szel_kmh: c.wind_speed_10m, szellokes_kmh: c.wind_gusts_10m,
+      szel_irany_fok: c.wind_direction_10m, szel_irany: compassDir(c.wind_direction_10m),
+      szel_beaufort: wb, szellokes_beaufort: gb, szel_beaufort_cimke: wb != null ? BF[wb] : null
+    };
+  }
+
+  function todayIndex(om) {
+    var todayStr = (om.current && om.current.time || "").slice(0, 10);
+    var idx = om.daily.time.indexOf(todayStr);
+    return idx >= 0 ? idx : Math.min(PAST_DAYS, om.daily.time.length - 1);
+  }
+
+  function buildDays(om, idx) {
+    var t = om.daily.time, out = [];
+    for (var i = idx; i < Math.min(idx + FORECAST_DAYS, t.length); i++) {
+      out.push({
+        datum: t[i], min_c: om.daily.temperature_2m_min[i], max_c: om.daily.temperature_2m_max[i],
+        csapadek_mm: om.daily.precipitation_sum[i], szel_max_kmh: om.daily.wind_speed_10m_max[i],
+        szellokes_max_kmh: om.daily.wind_gusts_10m_max[i], uv_max: om.daily.uv_index_max[i]
+      });
+    }
+    return out;
+  }
+
+  function drySpell(om, idx) {
+    var p = om.daily.precipitation_sum, n = 0;
+    for (var i = idx - 1; i >= 0; i--) {
+      if (p[i] != null && p[i] < 0.2) n++; else break;
+    }
+    return n;
+  }
+
+  function buildHours(om) {
+    var times = om.hourly.time, nowIso = om.current && om.current.time;
+    var start = times.indexOf(nowIso);
+    if (start < 0) {
+      var nowMs = Date.now();
+      start = times.length;
+      for (var i = 0; i < times.length; i++) { if (new Date(times[i]).getTime() >= nowMs) { start = i; break; } }
+    }
+    var out = [];
+    for (var j = start; j < Math.min(start + HOURS, times.length); j++) {
+      out.push({
+        ido: times[j], szel_kmh: om.hourly.wind_speed_10m[j], szellokes_kmh: om.hourly.wind_gusts_10m[j],
+        szel_irany_fok: om.hourly.wind_direction_10m[j], szel_irany: compassDir(om.hourly.wind_direction_10m[j]),
+        szel_beaufort: beaufort(om.hourly.wind_speed_10m[j]), szellokes_beaufort: beaufort(om.hourly.wind_gusts_10m[j])
+      });
+    }
+    return out;
+  }
+
+  function fireDanger(now, todayMax, dryDays) {
+    if (todayMax == null) return null;
+    var tScore = clamp01((todayMax - 15) / (36 - 15));
+    var wScore = clamp01((now.szellokes_kmh || 0) / 60);
+    var hScore = clamp01((100 - (now.paratartalom_pct == null ? 50 : now.paratartalom_pct)) / 70);
+    var dScore = clamp01(dryDays / 14);
+    var avg = tScore * 0.3 + wScore * 0.25 + hScore * 0.25 + dScore * 0.2;
+    var fokozat = Math.max(1, Math.min(5, 1 + Math.round(avg * 4)));
+    return { fokozat: fokozat, cimke: FIRE_LABEL[fokozat], biztos: true,
+      reszek: { homerseklet: tScore, szel: wScore, szarazsag: hScore, szaraz_napok: dScore } };
+  }
+
+  function assemble(place, om) {
+    var idx = todayIndex(om);
+    var now = buildNow(om);
+    var days = buildDays(om, idx);
+    var dry = drySpell(om, idx);
+    return {
+      hely: place, most: now, napok: days, orak: buildHours(om),
+      tuzveszely: fireDanger(now, days.length ? days[0].max_c : null, dry),
+      csapadekmentes_napok: dry
+    };
+  }
+
+  /* ---------- renderers (pure functions of the assembled shape) ---------- */
   function renderDial(now) {
     var s = [], cx = 100, cy = 100, R = 74;
     s.push('<circle cx="100" cy="100" r="' + R + '" fill="var(--surface-2)" stroke="var(--line-soft)" stroke-width="1"/>');
@@ -645,7 +789,7 @@
     });
   }
 
-  /* ---------- warnings ---------- */
+  /* ---------- alerts ---------- */
   function dayName(datum) {
     var dt = new Date(datum + "T12:00:00");
     var today = new Date();
@@ -740,73 +884,60 @@
 
   /* ---------- error branching ---------- */
   function showError(err) {
-    var code = (err && err.code) || "upstream_error";
+    var code = (err && err.code) || "unknown";
     setLive("err", "hiba");
-    if (code === "needs_reauth") {
-      notice("warn", "A CST connector kapcsolata lejárt",
-        "Lépj be újra: claude.ai → Beállítások → Connectors → CST, aztán töltsd újra ezt az oldalt.");
-    } else if (code === "server_not_connected") {
-      notice("warn", "Nincs csatlakoztatva a CST connector",
-        "Ez az oldal a CST connector weather_context eszközéből dolgozik. Add hozzá: claude.ai → Beállítások → Connectors.");
-    } else if (code === "selection_required") {
-      notice("warn", "Több CST connector közül kell választani",
-        "A claude.ai megkérdezi, melyiket használjuk. Válassz egyet, majd töltsd újra az oldalt.");
-    } else if (code === "not_granted" || code === "capability_disabled") {
-      notice("warn", "Ez a nézet nem érheti el a connectorokat",
-        "Nyisd meg az artifactot közvetlenül a claude.ai-on — beágyazott vagy mentett példányban nincs connector-hozzáférés.");
-    } else if (code === "blocked_by_policy" || code === "approval_required") {
-      notice("warn", "A szervezeti szabály tiltja ezt a hívást",
-        "A weather_context eszköz használatához engedély kell az adminisztrátortól.");
-    } else if (code === "tool_error") {
-      notice("warn", "A lekérdezés nem sikerült",
-        (err && err.message) || "Az időjárás-eszköz hibát jelzett.",
-        "Próbáld pontosabb helynévvel, például: Szeged, Hungary.");
-    } else if (code === "server_unavailable") {
-      notice("warn", "Az adatszolgáltató most nem elérhető",
-        "Átmeneti hiba — az oldal magától újrapróbálja a következő frissítéskor.");
+    if (code === "not_found") {
+      notice("warn", "Nem található ilyen nevű hely",
+        (err && err.message) || "Próbáld pontosabban, például: Szeged, Hungary.");
+    } else if (code === "network_error") {
+      notice("warn", "Nem sikerült elérni az Open-Meteo szolgáltatást",
+        "Ellenőrizd az internetkapcsolatot — az oldal a következő frissítéskor magától újrapróbálja.");
+    } else if (code === "http_error") {
+      notice("warn", "Az időjárás-szolgáltatás hibát jelzett",
+        (err && err.message) || "Átmeneti hiba a lekérdezés közben.",
+        "Ez általában magától megoldódik — az oldal újrapróbálja.");
     } else {
       notice("warn", "Nem érkezett adat", (err && err.message) || "Ismeretlen hiba a lekérdezés közben.");
     }
   }
 
   /* ---------- data flow ---------- */
-  function inputFor(item) {
-    var inp = { days: DAYS, orank: HOURS };
-    if (item.lat != null && item.lon != null && !item.place) { inp.lat = item.lat; inp.lon = item.lon; }
-    else inp.place = item.place || item.label;
-    return inp;
-  }
-
   function select(item) {
     current = item;
     $("place-name").textContent = item.label;
     $("place-meta").textContent = "lekérdezés…";
     setLive("load", "lekérdezés");
     renderWatchlist();
-    if (!mcpNs) return;
-    if (unwatch) { try { unwatch(); } catch (e) {} unwatch = null; }
-    var retried = false;
-    unwatch = mcpNs.watchTool(SERVER, TOOL, inputFor(item), function (ev) {
-      if (ev.type === "data") {
-        var d = unwrap(ev.result);
-        if (!d || !d.hely) {
-          showError({ code: "tool_error", message: (d && d.hiba) || "A válasz nem tartalmazott mérési adatot." });
-          return;
-        }
-        notice(null);
-        setLive("ok", ev.result.cache && ev.result.cache.revalidating ? "frissítés" : "élő");
-        renderAll(d, ev.result.cache ? ev.result.cache.storedAt : Date.now());
-      } else {
-        var err = ev.error || {};
-        if (err.retryable && !retried) {
-          retried = true;
-          setLive("load", "újrapróba");
-          setTimeout(function () { if (current === item) select(item); }, Math.min(err.retryAfterMs || 4000, 20000) + Math.random() * 1500);
-          return;
-        }
-        showError(err);
+    runFetch(item);
+  }
+
+  function runFetch(item) {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    var mySeq = ++reqSeq;
+    var geoPromise = (item.lat != null && item.lon != null && !item.place)
+      ? Promise.resolve(null)
+      : geocode(item.place || item.label);
+
+    geoPromise.then(function (geo) {
+      var place = buildPlace(geo, item.label, item.lat != null ? { lat: item.lat, lon: item.lon } : null);
+      if (!place) throw Object.assign(new Error("Nem található ilyen nevű hely."), { code: "not_found" });
+      return forecastFor(place.lat, place.lon).then(function (om) { return assemble(place, om); });
+    }).then(function (d) {
+      if (mySeq !== reqSeq) return; // a newer request has since started
+      notice(null);
+      setLive("ok", "élő");
+      renderAll(d, Date.now());
+      pollTimer = setTimeout(function () { if (current === item) runFetch(item); }, POLL_MS);
+    }).catch(function (err) {
+      if (mySeq !== reqSeq) return;
+      if (err && err.retryable && !item._retried) {
+        item._retried = true;
+        setLive("load", "újrapróba");
+        setTimeout(function () { if (current === item) runFetch(item); }, 4000 + Math.random() * 1500);
+        return;
       }
-    }, { refetchInterval: 900000 });
+      showError(err);
+    });
   }
 
   /* ---------- wiring ---------- */
@@ -827,21 +958,9 @@
   renderDial(null);
   renderLadder(null);
   document.getElementById("now-grid").classList.add("skeleton");
-  notice("info", "Csatlakozás az időjárás-adatokhoz",
-    "Az oldal a CST connector weather_context eszközét hívja a te fiókoddal. Az első hívásnál a claude.ai engedélyt kér.");
-
-  claude.use("mcp").then(function (ns) {
-    if (!ns) {
-      setLive("err", "nincs adat");
-      notice("warn", "Ez a nézet nem tud connectort hívni",
-        "Nyisd meg az oldalt közvetlenül a claude.ai artifact-nézetében. A panel felépítése és a küszöbértékek addig is olvashatók.");
-      return;
-    }
-    mcpNs = ns;
-    select(watchlist[0]);
-  }).catch(function () {
-    setLive("err", "nincs adat");
-    notice("warn", "Nem sikerült elindítani a connector-hozzáférést", "Töltsd újra az oldalt.");
-  });
+  notice("info", "Adatok betöltése", "Lekérdezés az Open-Meteo szolgáltatástól…");
+  select(watchlist[0]);
 })();
 </script>
+</body>
+</html>
