@@ -69,10 +69,3 @@ Ugyanígy működik GitHub Pages-ről vagy bármilyen statikus tárhelyről — 
 
 Nincs build-lépés és nincs függősége: az egyetlen külső erőforrás a Google Fonts
 (IBM Plex Sans / Sans Condensed / Mono) és az Open-Meteo API.
-
-## Másik alkalmazás ebben a repóban
-
-[`napi-recept-ajanlo/`](napi-recept-ajanlo/) — **Napi recept ajánló**: minden
-nap reggelit, ebédet és vacsorát javasol hét konyha (olasz, francia,
-amerikai, lengyel, délszláv, görög, magyar) közül, ugyanezzel a
-kulcs-nélküli, statikus filozófiával. Részletek a saját README-jében.
