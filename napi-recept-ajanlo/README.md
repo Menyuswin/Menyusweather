@@ -2,9 +2,10 @@
 
 Egyoldalas, statikus alkalmazás: minden nap ajánl egy-egy **reggelit, ebédet
 és vacsorát**, hét konyha közül válogatva — olasz, francia, amerikai, lengyel,
-délszláv, görög és magyar. Nincs build-lépés, nincs backend, nincs
-API-kulcs — ugyanaz a filozófia, mint a repó másik alkalmazásánál
-(`../index.html`, Időjárás-ügyelet).
+délszláv, görög és magyar. Minden recept magyarul jelenik meg. Nincs
+build-lépés, nincs backend, nincs API-kulcs, nincs élő hálózati hívás sem —
+ugyanaz a filozófia, mint a repó másik alkalmazásánál (`../index.html`,
+Időjárás-ügyelet), csak itt még a hálózat sem kell hozzá.
 
 ## Hogyan válogat
 
@@ -17,41 +18,25 @@ kínál egy másik fogást, dátum-váltás nélkül is.
 
 ## Adatforrások
 
-Nincs egyetlen ingyenes adatbázis, amely mind a hét konyhát lefedné — ezért
-az alkalmazás két réteget kever:
+Nincs egyetlen ingyenes, élőben lekérdezhető adatbázis, amely mind a hét
+konyhát magyar nyelven lefedné — ezért az oldal mind a 7 konyhához (olasz,
+francia, amerikai, lengyel, délszláv, görög, magyar) **kézzel, magyarul
+összeállított** recept-készletet tartalmaz: konyhánként 9 recept (3-3
+reggelire, ebédre, vacsorára), összesen 63.
 
-- **Élő lekérdezés — 6 konyha.** Az oldal közvetlenül a böngészőből hívja a
-  [TheMealDB](https://www.themealdb.com) ingyenes, kulcs nélkül elérhető
-  API-ját (`filter.php`, `lookup.php`) az olasz, francia, amerikai, lengyel,
-  görög és délszláv (a TheMealDB-ben horvátként szereplő) receptekhez.
-  Mivel a TheMealDB nem bont mindent kifejezetten reggeli/ebéd/vacsora
-  kategóriára, reggelire csak akkor jelenik meg dedikált "Breakfast"-címkés
-  recept, ha van ilyen az adott konyhához — ha nincs, egy általános fogás
-  kerül a helyére.
-- **Kézzel válogatott adat — magyar konyha.** Erre nincs ingyenes, élőben
-  lekérdezhető API, ezért ezt az oldal 9 kézzel összeállított, valódi magyar
-  recepttel (3-3 reggelire, ebédre, vacsorára) pótolja, a Wikibooks Cookbook
-  (CC BY-SA 3.0) és a Magyar Elektronikus Könyvtár közkincs szakácskönyveinek
-  ihletésével.
+A válogatás háttéranyagaként — klasszikus fogások és jellemző arányok
+tájékozódási pontjaként, nem szó szerinti átvételként — ezt az öt ingyenesen
+elérhető forrást használtam:
 
-Kiegészítő háttérforrások a válogatáshoz:
+1. [TheMealDB](https://www.themealdb.com) — ingyenes recept-adatbázis (olasz, francia, amerikai, lengyel, görög, délszláv/horvát receptek ihletője)
+2. [Wikibooks Cookbook](https://en.wikibooks.org/wiki/Cookbook) — CC BY-SA 3.0, konyhánkénti fejezetei
+3. Pellegrino Artusi: *La Scienza in cucina e l'Arte di mangiar bene* (1891) — közkincs, olasz klasszikusok
+4. Auguste Escoffier: *Le Guide Culinaire* (1907) — közkincs, francia klasszikusok
+5. Lucyna Ćwierczakiewiczowa: *365 obiadów za pięć złotych* (1858) és a Magyar Elektronikus Könyvtár közkincs szakácskönyvei — lengyel és magyar háttéranyag
 
-1. [TheMealDB](https://www.themealdb.com) — ingyenes recept-API
-2. [Wikibooks Cookbook](https://en.wikibooks.org/wiki/Cookbook) — CC BY-SA 3.0
-3. Pellegrino Artusi: *La Scienza in cucina e l'Arte di mangiar bene* (1891) — közkincs
-4. Auguste Escoffier: *Le Guide Culinaire* (1907) — közkincs
-5. Lucyna Ćwierczakiewiczowa: *365 obiadów za pięć złotych* (1858) — közkincs
-
-## Korlátok, amiket érdemes tudni
-
-- A TheMealDB-ből érkező hozzávalók és elkészítési leírás **angol nyelvű**
-  (mivel az API angolul szolgáltatja az adatot) — csak a magyar recept-készlet
-  van magyarul megírva.
-- Ha a TheMealDB nem érhető el (hálózati hiba, vagy a szolgáltatás
-  leállt), az érintett kártya hibaüzenetet és "Újra" gombot mutat — a magyar
-  recepteket ez nem érinti, azok mindig helyben, azonnal betöltődnek.
-- A délszláv konyhát a TheMealDB-ben elérhető horvát recept-készlet
-  képviseli, mert nincs ingyenes API kifejezetten "délszláv" bontásra.
+A délszláv konyhát a Balkán-félsziget elterjedt, több ország konyhájában is
+közös fogásai (pl. sarma, ćevapčići, burek) képviselik, mert nincs erre a
+régióra bontott, egységes forrás.
 
 ## Futtatás helyben
 
@@ -63,5 +48,5 @@ ugyanígy működik GitHub Pages-ről vagy bármilyen statikus tárhelyről.
 
 ## Fájlok
 
-    index.html    a teljes alkalmazás — stílus, jelölés és logika egy fájlban
+    index.html    a teljes alkalmazás — stílus, jelölés, recept-adatok és logika egy fájlban
     README.md     ez a leírás
