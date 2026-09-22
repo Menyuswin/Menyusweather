@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Napi recept ajánló</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  img { max-width: 100%; display: block; }
+  [hidden] { display: none !important; }
+
+  :root {
+    --paper:      #EFEAE2;
+    --surface:    #FBF8F3;
+    --surface-2:  #F1EBE0;
+    --ink:        #2A2116;
+    --ink-2:      #59493A;
+    --muted:      #8A7A66;
+    --line:       #D9CEBC;
+    --line-soft:  #E6DECE;
+    --accent:     #B24A22;
+    --accent-2:   #8A3818;
+    --accent-tint:#F0DCCF;
+    --calm:       #4C7A3D;
+    --warn:       #A8600A;
+    --crit:       #9E2B21;
+    --crit-tint:  #F3D8D4;
+    --focus:      #B24A22;
+    --shadow:     0 1px 2px rgba(42,33,22,.08), 0 8px 24px -18px rgba(42,33,22,.4);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #1B140D;
+      --surface:    #241B12;
+      --surface-2:  #2C2216;
+      --ink:        #F1E7D8;
+      --ink-2:      #D2C1A8;
+      --muted:      #9C8B74;
+      --line:       #3C2F20;
+      --line-soft:  #2F2517;
+      --accent:     #E0854F;
+      --accent-2:   #EFA679;
+      --accent-tint:#3A2617;
+      --calm:       #86BE6E;
+      --warn:       #E0A050;
+      --crit:       #EC7C6E;
+      --crit-tint:  #3D1D18;
+      --focus:      #E0854F;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #1B140D;
+    --surface:    #241B12;
+    --surface-2:  #2C2216;
+    --ink:        #F1E7D8;
+    --ink-2:      #D2C1A8;
+    --muted:      #9C8B74;
+    --line:       #3C2F20;
+    --line-soft:  #2F2517;
+    --accent:     #E0854F;
+    --accent-2:   #EFA679;
+    --accent-tint:#3A2617;
+    --calm:       #86BE6E;
+    --warn:       #E0A050;
+    --crit:       #EC7C6E;
+    --crit-tint:  #3D1D18;
+    --focus:      #E0854F;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 56px; }
+
+  h1, h2, h3, .cond { font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px 24px; padding-bottom: 16px; border-bottom: 2px solid var(--ink);
+  }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  .tagline { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; max-width: 62ch; }
+  .stamp { text-align: right; font-size: 12.5px; color: var(--muted); }
+  .stamp .day { color: var(--ink-2); font-weight: 600; text-transform: capitalize; }
+
+  :where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  a { color: var(--accent); }
+
+  .meals {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 26px;
+  }
+  @media (max-width: 820px) { .meals { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .card .head {
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .meal-name { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+  .cuisine-badge {
+    display: inline-flex; align-items: center; font-size: 12px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; background: var(--accent-tint); color: var(--accent-2);
+    border: 1px solid var(--line-soft);
+  }
+  .card .thumb {
+    width: 100%; aspect-ratio: 16/10; object-fit: cover; background: var(--surface-2);
+  }
+  .card .thumb.placeholder {
+    display: flex; align-items: center; justify-content: center; color: var(--muted);
+    font-size: 13px; text-align: center; padding: 20px;
+  }
+  .card .body { padding: 14px 16px 16px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .recipe-title { font-size: 19px; font-weight: 700; margin: 0; line-height: 1.25; }
+  .recipe-source { font-size: 11.5px; color: var(--muted); }
+  .recipe-source a { color: var(--muted); text-decoration: underline; }
+
+  details.ingredients summary, details.steps summary {
+    cursor: pointer; font-weight: 600; font-size: 13px; color: var(--ink-2);
+    padding: 2px 0;
+  }
+  details[open] summary { margin-bottom: 6px; }
+  .ingredients ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+  .ingredients li { margin-bottom: 2px; }
+  .steps p { font-size: 13.5px; white-space: pre-line; margin: 0; color: var(--ink-2); }
+
+  .card .foot { margin-top: auto; padding-top: 8px; }
+  button.shuffle {
+    font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+    padding: 7px 11px; width: 100%;
+  }
+  button.shuffle:hover { border-color: var(--accent); color: var(--accent-2); }
+  button.retry {
+    font: inherit; font-size: 12.5px; cursor: pointer; border-radius: 5px;
+    border: 1px solid var(--crit); background: var(--crit-tint); color: var(--crit);
+    padding: 7px 11px;
+  }
+
+  .state-loading, .state-error { padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  .state-error { color: var(--crit); }
+  .skeleton {
+    height: 14px; border-radius: 3px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--line-soft) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite; margin-bottom: 8px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  footer.sources {
+    margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--muted);
+  }
+  footer.sources h2 { font-size: 13px; margin: 0 0 8px; color: var(--ink-2); }
+  footer.sources ul { margin: 0; padding-left: 18px; }
+  footer.sources li { margin-bottom: 4px; }
+  footer.sources .note { margin-top: 12px; max-width: 74ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Napi recept ajánló</h1>
+      <p class="tagline">Minden nap három konyhából — olasz, francia, amerikai, lengyel, délszláv, görög és magyar közül — ajánl egy-egy reggelit, ebédet és vacsorát. Éjfélkor vált, ugyanaznap újratöltve ugyanazt mutatja.</p>
+    </div>
+    <div class="stamp">
+      <div class="day" id="dayLabel">—</div>
+      <div class="num" id="dateLabel">—</div>
+    </div>
+  </header>
+
+  <section class="meals" id="meals">
+    <article class="card" data-slot="breakfast">
+      <div class="head">
+        <span class="meal-name">Reggeli</span>
+        <span class="cuisine-badge" data-role="cuisine">—</span>
+      </div>
+      <div class="body"><div class="state-loading">Betöltés…</div></div>
+    </article>
+    <article class="card" data-slot="lunch">
+      <div class="head">
+        <span class="meal-name">Ebéd</span>
+        <span class="cuisine-badge" data-role="cuisine">—</span>
+      </div>
+      <div class="body"><div class="state-loading">Betöltés…</div></div>
+    </article>
+    <article class="card" data-slot="dinner">
+      <div class="head">
+        <span class="meal-name">Vacsora</span>
+        <span class="cuisine-badge" data-role="cuisine">—</span>
+      </div>
+      <div class="body"><div class="state-loading">Betöltés…</div></div>
+    </article>
+  </section>
+
+  <footer class="sources">
+    <h2>Adatforrások</h2>
+    <ul>
+      <li><strong>TheMealDB</strong> (themealdb.com) — ingyenes, kulcs nélkül elérhető recept-API; olasz, francia, amerikai, lengyel, görög és délszláv (horvát) receptek élő forrása.</li>
+      <li><strong>Wikibooks Cookbook</strong> (en.wikibooks.org/wiki/Cookbook, CC BY-SA 3.0) — a magyar recept-válogatás egyik háttérforrása.</li>
+      <li>Pellegrino Artusi: <em>La Scienza in cucina e l'Arte di mangiar bene</em> (1891) — közkincs, olasz klasszikusok.</li>
+      <li>Auguste Escoffier: <em>Le Guide Culinaire</em> (1907) — közkincs, francia klasszikusok.</li>
+      <li>Lucyna Ćwierczakiewiczowa: <em>365 obiadów za pięć złotych</em> (1858) és a Magyar Elektronikus Könyvtár közkincs szakácskönyvei — lengyel és magyar háttéranyag.</li>
+    </ul>
+    <p class="note">A délszláv konyhát — mivel nincs erre a régióra bontott ingyenes API — a TheMealDB horvát (Croatian) recept-készlete képviseli. A hat élő konyha hozzávalói és elkészítési leírása a TheMealDB-ből angolul érkezik; a magyar recepteket ez az oldal kézzel, magyarul állította össze. Reggelire csak akkor jelenik meg kifejezetten "reggeli"-kategóriás recept egy adott konyhából, ha a TheMealDB-ben van ilyen — ha nincs, a konyha egy általános fogása kerül ki helyette.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CUISINES = [
+    { key: "italian",     label: "Olasz",              area: "Italian" },
+    { key: "french",      label: "Francia",            area: "French" },
+    { key: "american",    label: "Amerikai",           area: "American" },
+    { key: "polish",      label: "Lengyel",             area: "Polish" },
+    { key: "southslavic", label: "Délszláv (horvát)",  area: "Croatian" },
+    { key: "greek",       label: "Görög",               area: "Greek" },
+    { key: "hungarian",   label: "Magyar",              area: null }
+  ];
+
+  var MEALS = [
+    { slot: "breakfast", label: "Reggeli", offset: 0 },
+    { slot: "lunch",     label: "Ebéd",    offset: 2 },
+    { slot: "dinner",    label: "Vacsora", offset: 4 }
+  ];
+
+  var HUNGARIAN_RECIPES = {
+    breakfast: [
+      {
+        title: "Rántotta kolbásszal és paradicsommal",
+        ingredients: ["3 tojás", "1 db füstölt házi kolbász (vagy csabai)", "1 közepes paradicsom", "1 kis vöröshagyma", "só, bors", "1 evőkanál zsír vagy olaj", "friss kenyér"],
+        steps: "A hagymát megpirítjuk zsíron, hozzáadjuk a felkarikázott kolbászt, pár percig pirítjuk, majd a kockázott paradicsomot is hozzáadjuk.\nFelverjük a tojásokat sóval-borssal, ráöntjük, lassú tűzön, folyamatos kevergetéssel rántottává sütjük.\nFriss kenyérrel tálaljuk."
+      },
+      {
+        title: "Tejbegríz mézzel és fahéjjal",
+        ingredients: ["5 dl tej", "5 evőkanál búzadara", "1 evőkanál cukor", "csipet só", "méz és fahéj a tetejére", "vaj (elhagyható)"],
+        steps: "A tejet felforraljuk a cukorral és a sóval, majd folyamatos keverés mellett vékony sugárban belehintjük a búzadarát.\nKis lángon 3-4 percig főzzük, amíg besűrűsödik.\nTálaláskor mézzel és fahéjjal megszórjuk."
+      },
+      {
+        title: "Túrós palacsinta",
+        ingredients: ["2 tojás", "3 dl tej", "15 dkg liszt", "csipet só", "olaj a sütéshez", "25 dkg túró", "1 tojássárgája", "3 evőkanál cukor", "vaníliás cukor", "reszelt citromhéj", "1-2 evőkanál tejföl"],
+        steps: "A tésztahozzávalókból sima palacsintatésztát keverünk, vékony palacsintákat sütünk.\nA túrót elkeverjük a tojássárgájával, cukorral, vaníliás cukorral és citromhéjjal.\nA palacsintákat megtöltjük, feltekerjük, tejföllel tálaljuk."
+      }
+    ],
+    lunch: [
+      {
+        title: "Gulyásleves",
+        ingredients: ["50 dkg marhalábszár vagy lapocka, kockázva", "2 fej vöröshagyma", "2 gerezd fokhagyma", "2 evőkanál pirospaprika", "3 közepes burgonya", "2 sárgarépa", "1 petrezselyemgyökér", "1 db paprika", "1 paradicsom", "1 teáskanál köménymag", "só, bors", "olaj vagy zsír"],
+        steps: "A felkockázott hagymát üvegesre pirítjuk zsíron, tűzről lehúzva belekeverjük a pirospaprikát, majd rögtön felöntjük kevés vízzel, nehogy megégjen.\nHozzáadjuk a húst, a fokhagymát, a köménymagot, sózzuk, és puhára pároljuk, közben pótoljuk a vizet.\nAmikor a hús majdnem puha, hozzáadjuk a felkockázott zöldségeket, és tovább főzzük, amíg minden megpuhul."
+      },
+      {
+        title: "Paprikás csirke nokedlivel",
+        ingredients: ["1 feldarabolt csirke (vagy combok/mellek)", "2 fej vöröshagyma", "2 evőkanál pirospaprika", "1 paprika", "1 paradicsom", "2 dl tejföl", "1 evőkanál liszt", "só, zsír vagy olaj", "nokedlihez: 30 dkg liszt, 2 tojás, kevés víz, só"],
+        steps: "A hagymát megdinszteljük zsíron, tűzről lehúzva hozzáadjuk a pirospaprikát, majd a húst, és sózzuk.\nHozzáadjuk a paprikát, a paradicsomot, kevés vizet, és puhára pároljuk.\nA tejfölt elkeverjük a liszttel, behabarjuk vele a szaftot.\nKözben a nokedli hozzávalóiból sűrű tésztát keverünk, forró sós vízbe szaggatjuk, kifőzzük, és a csirkével tálaljuk."
+      },
+      {
+        title: "Töltött káposzta",
+        ingredients: ["1 fej savanyú káposzta (a leveleihez)", "40 dkg darált sertéshús", "10 dkg rizs", "1 fej vöröshagyma", "1 tojás", "1 gerezd fokhagyma", "pirospaprika, só, bors", "30 dkg apróra vágott savanyú káposzta", "füstölt szalonna vagy császárhús", "babérlevél"],
+        steps: "A rizst félig megfőzzük. A darált húst összekeverjük a rizzsel, apróra vágott hagymával, tojással, fokhagymával, sóval, borssal és pirospaprikával.\nA káposztaleveleket megtöltjük, feltekerjük.\nEgy fazék alját apróra vágott káposztával és szalonnával bélelünk, rátesszük a töltelékeket, majd újabb réteg káposztával fedjük.\nVízzel felöntjük, babérlevéllel kb. 1,5-2 órán át lassú tűzön főzzük."
+      }
+    ],
+    dinner: [
+      {
+        title: "Lecsó kolbásszal",
+        ingredients: ["4-5 db paprika (kápia vagy tölteni való)", "3-4 paradicsom", "1 fej vöröshagyma", "20 dkg füstölt kolbász", "2 evőkanál olaj vagy zsír", "1 teáskanál pirospaprika", "só, bors", "1 tojás (elhagyható)"],
+        steps: "A hagymát megpirítjuk olajon, hozzáadjuk a felkarikázott kolbászt, majd a csíkokra vágott paprikát.\nPár perc pirítás után rászórjuk a pirospaprikát, majd hozzáadjuk a felkockázott paradicsomot.\nSózzuk, borsozzuk, fedő alatt puhára pároljuk. Ha szeretjük, a végén felvert tojással behabarjuk."
+      },
+      {
+        title: "Hortobágyi húsos palacsinta",
+        ingredients: ["palacsintatészta: 2 tojás, 3 dl tej, 15 dkg liszt, csipet só", "30 dkg darált vagy apróra vágott főtt hús", "1 fej hagyma", "pirospaprika", "2 dl tejföl", "1 evőkanál liszt a szafthoz", "só, bors"],
+        steps: "Vékony palacsintákat sütünk.\nA hagymát megpirítjuk, tűzről lehúzva pirospaprikát adunk hozzá, majd a húst, sózzuk, borsozzuk, kevés vízzel puhára pároljuk, ledaráljuk vagy apróra vágjuk.\nA palacsintákba töltjük, feltekerjük.\nA maradék szaftot tejföllel és liszttel behabarjuk, a palacsinták tetejére öntjük."
+      },
+      {
+        title: "Rakott krumpli",
+        ingredients: ["1 kg burgonya", "6 főtt tojás", "20 dkg füstölt kolbász", "3 dl tejföl", "10 dkg reszelt sajt", "vaj a formához", "só"],
+        steps: "A krumplit héjában megfőzzük, meghámozzuk, karikákra vágjuk, akárcsak a főtt tojásokat és a kolbászt.\nKivajazott tepsibe rétegezzük: krumpli, tojás, kolbász, sózott tejföl — ezt ismételjük, a tetejét tejföllel és reszelt sajttal fedjük.\n180 fokos sütőben kb. 25-30 percig sütjük, amíg a teteje aranybarna lesz."
+      }
+    ]
+  };
+
+  var API = "https://www.themealdb.com/api/json/v1/1/";
+  var listCache = {};
+  var shuffleOffset = { breakfast: 0, lunch: 0, dinner: 0 };
+  var todayKey = dateKey(new Date());
+
+  function dateKey(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function dayOfYear(d) {
+    var start = new Date(d.getFullYear(), 0, 0);
+    var diff = d - start;
+    return Math.floor(diff / 86400000);
+  }
+
+  function cuisineForMeal(meal, doy) {
+    var idx = (doy + meal.offset) % CUISINES.length;
+    return CUISINES[idx];
+  }
+
+  function fetchJSON(url) {
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  function getAreaList(area) {
+    var cacheKey = "area:" + area;
+    if (listCache[cacheKey]) return listCache[cacheKey];
+    listCache[cacheKey] = fetchJSON(API + "filter.php?a=" + encodeURIComponent(area)).then(function (d) {
+      return d.meals || [];
+    });
+    return listCache[cacheKey];
+  }
+
+  function getCategoryList(cat) {
+    var cacheKey = "cat:" + cat;
+    if (listCache[cacheKey]) return listCache[cacheKey];
+    listCache[cacheKey] = fetchJSON(API + "filter.php?c=" + encodeURIComponent(cat)).then(function (d) {
+      return d.meals || [];
+    });
+    return listCache[cacheKey];
+  }
+
+  function idSet(list) {
+    var s = {};
+    list.forEach(function (m) { s[m.idMeal] = true; });
+    return s;
+  }
+
+  function pickLiveCandidates(area, slot) {
+    return Promise.all([getAreaList(area), getCategoryList("Breakfast"), getCategoryList("Dessert")]).then(function (r) {
+      var areaList = r[0], breakfastList = r[1], dessertList = r[2];
+      var breakfastIds = idSet(breakfastList);
+      var dessertIds = idSet(dessertList);
+      if (slot === "breakfast") {
+        var onlyBreakfast = areaList.filter(function (m) { return breakfastIds[m.idMeal]; });
+        return onlyBreakfast.length ? onlyBreakfast : areaList.filter(function (m) { return !dessertIds[m.idMeal]; });
+      }
+      var mains = areaList.filter(function (m) { return !breakfastIds[m.idMeal] && !dessertIds[m.idMeal]; });
+      return mains.length ? mains : areaList;
+    });
+  }
+
+  function renderLoading(card) {
+    card.querySelector(".body").innerHTML = '<div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:40%"></div>';
+  }
+
+  function renderError(card, slot, cuisine) {
+    var body = card.querySelector(".body");
+    body.innerHTML = "";
+    var msg = document.createElement("div");
+    msg.className = "state-error";
+    msg.textContent = "Nem sikerült elérni a recept-adatbázist.";
+    var retry = document.createElement("button");
+    retry.className = "retry";
+    retry.textContent = "Újra";
+    retry.style.marginTop = "10px";
+    retry.addEventListener("click", function () { loadSlot(slot, cuisine); });
+    body.appendChild(msg);
+    body.appendChild(retry);
+  }
+
+  function renderRecipe(card, slot, cuisine, recipe) {
+    var body = card.querySelector(".body");
+    body.innerHTML = "";
+
+    if (recipe.image) {
+      var img = document.createElement("img");
+      img.className = "thumb";
+      img.src = recipe.image;
+      img.alt = recipe.title;
+      img.loading = "lazy";
+      body.appendChild(img);
+    }
+
+    var title = document.createElement("h3");
+    title.className = "recipe-title";
+    title.textContent = recipe.title;
+    body.appendChild(title);
+
+    var src = document.createElement("div");
+    src.className = "recipe-source";
+    if (recipe.sourceUrl) {
+      var a = document.createElement("a");
+      a.href = recipe.sourceUrl;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = "Forrás: " + recipe.sourceLabel;
+      src.appendChild(a);
+    } else {
+      src.textContent = "Forrás: " + recipe.sourceLabel;
+    }
+    body.appendChild(src);
+
+    var ing = document.createElement("details");
+    ing.className = "ingredients";
+    ing.open = true;
+    var ingSum = document.createElement("summary");
+    ingSum.textContent = "Hozzávalók";
+    ing.appendChild(ingSum);
+    var ul = document.createElement("ul");
+    recipe.ingredients.forEach(function (i) {
+      var li = document.createElement("li");
+      li.textContent = i;
+      ul.appendChild(li);
+    });
+    ing.appendChild(ul);
+    body.appendChild(ing);
+
+    var steps = document.createElement("details");
+    steps.className = "steps";
+    var stepsSum = document.createElement("summary");
+    stepsSum.textContent = "Elkészítés";
+    steps.appendChild(stepsSum);
+    var p = document.createElement("p");
+    p.textContent = recipe.steps;
+    steps.appendChild(p);
+    body.appendChild(steps);
+
+    var foot = document.createElement("div");
+    foot.className = "foot";
+    var shuffle = document.createElement("button");
+    shuffle.className = "shuffle";
+    shuffle.textContent = "Másik ötletet ebből a konyhából";
+    shuffle.addEventListener("click", function () {
+      shuffleOffset[slot] += 1;
+      loadSlot(slot, cuisine);
+    });
+    foot.appendChild(shuffle);
+    body.appendChild(foot);
+  }
+
+  function loadSlot(slot, cuisine) {
+    var card = document.querySelector('.card[data-slot="' + slot + '"]');
+    card.querySelector('[data-role="cuisine"]').textContent = cuisine.label;
+    renderLoading(card);
+
+    var doy = dayOfYear(new Date());
+
+    if (cuisine.key === "hungarian") {
+      var pool = HUNGARIAN_RECIPES[slot];
+      var idx = (doy + shuffleOffset[slot]) % pool.length;
+      var r = pool[idx];
+      renderRecipe(card, slot, cuisine, {
+        title: r.title,
+        image: null,
+        ingredients: r.ingredients,
+        steps: r.steps,
+        sourceLabel: "kézzel válogatott magyar recept",
+        sourceUrl: null
+      });
+      return;
+    }
+
+    pickLiveCandidates(cuisine.area, slot).then(function (candidates) {
+      if (!candidates.length) throw new Error("no candidates");
+      var idx = (doy + shuffleOffset[slot]) % candidates.length;
+      var pick = candidates[idx];
+      return fetchJSON(API + "lookup.php?i=" + pick.idMeal).then(function (d) {
+        var m = d.meals && d.meals[0];
+        if (!m) throw new Error("no detail");
+        var ingredients = [];
+        for (var i = 1; i <= 20; i++) {
+          var ingr = m["strIngredient" + i];
+          var meas = m["strMeasure" + i];
+          if (ingr && ingr.trim()) {
+            ingredients.push((meas && meas.trim() ? meas.trim() + " " : "") + ingr.trim());
+          }
+        }
+        renderRecipe(card, slot, cuisine, {
+          title: m.strMeal,
+          image: m.strMealThumb ? m.strMealThumb + "/medium" : null,
+          ingredients: ingredients,
+          steps: m.strInstructions || "",
+          sourceLabel: "TheMealDB",
+          sourceUrl: m.strSource || ("https://www.themealdb.com/meal/" + m.idMeal)
+        });
+      });
+    }).catch(function () {
+      renderError(card, slot, cuisine);
+    });
+  }
+
+  function renderDateStamp() {
+    var now = new Date();
+    var dayFmt = new Intl.DateTimeFormat("hu-HU", { weekday: "long" });
+    var dateFmt = new Intl.DateTimeFormat("hu-HU", { year: "numeric", month: "long", day: "numeric" });
+    document.getElementById("dayLabel").textContent = dayFmt.format(now);
+    document.getElementById("dateLabel").textContent = dateFmt.format(now);
+  }
+
+  function init() {
+    renderDateStamp();
+    var doy = dayOfYear(new Date());
+    MEALS.forEach(function (meal) {
+      var cuisine = cuisineForMeal(meal, doy);
+      loadSlot(meal.slot, cuisine);
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
